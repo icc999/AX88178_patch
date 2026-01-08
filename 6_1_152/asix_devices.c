@@ -32,6 +32,17 @@
 #define AX88772A_PHY16H		0x16
 #define AX88772A_PHY16H_DEFAULT 0x4044
 
+/* RTL8211F / RTL8211FSI PHY ID (Linux phy drivers) */
+#define RTL8211F_PHYID          0x001cc916
+
+/* RTL8211F RGMII delay bits/pages */
+#define RTL8211F_PAGE_RGMII     0x0d08
+#define RTL8211F_REG_TX_DELAY   0x11
+#define RTL8211F_REG_RX_DELAY   0x15
+#define RTL8211F_TX_DELAY_BIT   (1 << 8)
+#define RTL8211F_RX_DELAY_BIT   (1 << 3)
+
+
 struct ax88172_int_data {
 	__le16 res1;
 	u8 link;
@@ -1052,6 +1063,44 @@ static int marvell_led_status(struct usbnet *dev, u16 speed)
 	return 0;
 }
 
+static void rtl8211f_modify_paged(struct usbnet *dev, u16 page, u16 reg,
+	                                  u16 mask, bool set)
+	{
+	        u16 val;
+	
+	        /* select page */
+	        asix_mdio_write(dev->net, dev->mii.phy_id, 0x1f, page);
+	
+	        val = asix_mdio_read(dev->net, dev->mii.phy_id, reg);
+	        if (set)
+	                val |= mask;
+	        else
+	                val &= ~mask;
+	        asix_mdio_write(dev->net, dev->mii.phy_id, reg, val);
+	
+	        /* back to page 0 */
+	        asix_mdio_write(dev->net, dev->mii.phy_id, 0x1f, 0x0000);
+	}
+	
+static void rtl8211fsi_phy_init(struct usbnet *dev)
+	{
+	        /*
+	         * Minimal, safe init for RTL8211F/RTL8211FSI:
+	         * Apply RGMII delays the same way realtek.c does (but without phylib).
+	         *
+	         * Default here:
+	         *   - TX delay ON  (2ns)  -> matches your “TXDLY fixed gigabit” case
+	         *   - RX delay OFF
+	         * If you need RGMII_ID, enable RX too.
+	         */
+	        netdev_info(dev->net, "RTL8211FSI/RTL8211F detected by PHYID, applying RGMII delays (TX=ON RX=OFF)\n");
+	
+	        rtl8211f_modify_paged(dev, RTL8211F_PAGE_RGMII, RTL8211F_REG_TX_DELAY,
+	                              RTL8211F_TX_DELAY_BIT, true);
+	        rtl8211f_modify_paged(dev, RTL8211F_PAGE_RGMII, RTL8211F_REG_RX_DELAY,
+	                              RTL8211F_RX_DELAY_BIT, false);
+	}
+
 static int ax88178_reset(struct usbnet *dev)
 {
 	struct asix_data *data = (struct asix_data *)&dev->data;
@@ -1078,7 +1127,8 @@ static int ax88178_reset(struct usbnet *dev)
 
 	asix_write_cmd(dev, AX_CMD_WRITE_DISABLE, 0, 0, 0, NULL, 0);
 
-	netdev_dbg(dev->net, "EEPROM index 0x17 is 0x%04x\n", eeprom);
+	//netdev_dbg(dev->net, "EEPROM index 0x17 is 0x%04x\n", eeprom);
+	netdev_info(dev->net, "EEPROM index 0x17 is 0x%04x\n", eeprom);
 
 	if (eeprom == cpu_to_le16(0xffff)) {
 		data->phymode = PHY_MODE_MARVELL;
@@ -1089,7 +1139,8 @@ static int ax88178_reset(struct usbnet *dev)
 		data->ledmode = le16_to_cpu(eeprom) >> 8;
 		gpio0 = (le16_to_cpu(eeprom) & 0x80) ? 0 : 1;
 	}
-	netdev_dbg(dev->net, "GPIO0: %d, PhyMode: %d\n", gpio0, data->phymode);
+	//netdev_dbg(dev->net, "GPIO0: %d, PhyMode: %d\n", gpio0, data->phymode);
+	netdev_info(dev->net, "GPIO0: %d, PhyMode: %d\n", gpio0, data->phymode);
 
 	/* Power up external GigaPHY through AX88178 GPIO pin */
 	asix_write_gpio(dev, AX_GPIO_RSE | AX_GPIO_GPO_1 |
@@ -1122,8 +1173,17 @@ static int ax88178_reset(struct usbnet *dev)
 	if (data->phymode == PHY_MODE_MARVELL) {
 		marvell_phy_init(dev);
 		msleep(60);
-	} else if (data->phymode == PHY_MODE_RTL8211CL)
+	} else if (data->phymode == PHY_MODE_RTL8211CL) {
 		rtl8211cl_phy_init(dev);
+	} else {
+	    /*
+		* EEPROM phymode unknown -> identify by PHYID (0x02/0x03).
+		* Keep other PHY behavior unchanged.
+		*/
+		if (phyid == RTL8211F_PHYID) {
+			rtl8211fsi_phy_init(dev);
+		}
+	}
 
 	asix_phy_reset(dev, BMCR_RESET | BMCR_ANENABLE);
 	asix_mdio_write(dev->net, dev->mii.phy_id, MII_ADVERTISE,
