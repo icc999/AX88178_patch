@@ -39,9 +39,7 @@
 /* RTL8211F RGMII delay bits/pages */
 #define RTL8211F_PAGE_RGMII     0x0d08
 #define RTL8211F_REG_TX_DELAY   0x11
-#define RTL8211F_REG_RX_DELAY   0x15
 #define RTL8211F_TX_DELAY_BIT   (1 << 8)
-#define RTL8211F_RX_DELAY_BIT   (1 << 3)
 
 
 struct ax88172_int_data {
@@ -1067,7 +1065,7 @@ static int marvell_led_status(struct usbnet *dev, u16 speed)
 static void rtl8211f_modify_paged(struct usbnet *dev, u16 page, u16 reg,
 	                                  u16 mask, bool set)
 	{
-	        u16 val;
+			u16 val;
 	
 	        /* select page */
 	        asix_mdio_write(dev->net, dev->mii.phy_id, 0x1f, page);
@@ -1081,6 +1079,7 @@ static void rtl8211f_modify_paged(struct usbnet *dev, u16 page, u16 reg,
 	
 	        /* back to page 0 */
 	        asix_mdio_write(dev->net, dev->mii.phy_id, 0x1f, 0x0000);
+
 	}
 	
 static void rtl8211fsi_phy_init(struct usbnet *dev)
@@ -1091,15 +1090,12 @@ static void rtl8211fsi_phy_init(struct usbnet *dev)
 	         *
 	         * Default here:
 	         *   - TX delay ON  (2ns)  -> matches your “TXDLY fixed gigabit” case
-	         *   - RX delay OFF
-	         * If you need RGMII_ID, enable RX too.
 	         */
-	        netdev_info(dev->net, "RTL8211FSI/RTL8211F detected by PHYID, applying RGMII delays (TX=ON RX=OFF)\n");
+	        netdev_info(dev->net, "RTL8211FSI/RTL8211F detected by PHYID, applying RGMII delays (TX=ON)\n");
 	
 	        rtl8211f_modify_paged(dev, RTL8211F_PAGE_RGMII, RTL8211F_REG_TX_DELAY,
 	                              RTL8211F_TX_DELAY_BIT, true);
-	        rtl8211f_modify_paged(dev, RTL8211F_PAGE_RGMII, RTL8211F_REG_RX_DELAY,
-	                              RTL8211F_RX_DELAY_BIT, false);
+
 	}
 
 static int ax88178_reset(struct usbnet *dev)
@@ -1156,9 +1152,8 @@ static int ax88178_reset(struct usbnet *dev)
 		asix_write_gpio(dev, AX_GPIO_GPO1EN | AX_GPIO_GPO_1, 30, 0);
 	}
 
-	/* Read PHYID register *AFTER* powering up PHY */
-	phyid = asix_get_phyid(dev);
-	netdev_dbg(dev->net, "PHYID=0x%08x\n", phyid);
+	
+	
 
 	/* Set AX88178 to enable MII/GMII/RGMII interface for external PHY */
 	asix_write_cmd(dev, AX_CMD_SW_PHY_SELECT, 0, 0, 0, NULL, 0);
@@ -1176,17 +1171,21 @@ static int ax88178_reset(struct usbnet *dev)
 		msleep(60);
 	} else if (data->phymode == PHY_MODE_RTL8211CL) {
 		rtl8211cl_phy_init(dev);
-	} else {
-	    /*
-		* EEPROM phymode unknown -> identify by PHYID (0x02/0x03).
-		* Keep other PHY behavior unchanged.
-		*/
-		if (phyid == RTL8211F_PHYID) {
-			rtl8211fsi_phy_init(dev);
-		}
 	}
 
 	asix_phy_reset(dev, BMCR_RESET | BMCR_ANENABLE);
+	msleep(150);
+
+	/* Read PHYID register *AFTER* powering up PHY */
+	phyid = asix_get_phyid(dev);
+	netdev_dbg(dev->net, "PHYID=0x%08x\n", phyid);
+
+	if (data->phymode != PHY_MODE_MARVELL &&
+		data->phymode != PHY_MODE_RTL8211CL &&
+		phyid == RTL8211F_PHYID) {
+		rtl8211fsi_phy_init(dev);
+	}
+
 	asix_mdio_write(dev->net, dev->mii.phy_id, MII_ADVERTISE,
 			ADVERTISE_ALL | ADVERTISE_CSMA | ADVERTISE_PAUSE_CAP);
 	asix_mdio_write(dev->net, dev->mii.phy_id, MII_CTRL1000,
