@@ -1100,6 +1100,8 @@ static void rtl8211fsi_phy_init(struct usbnet *dev)
 
 static int ax88178_reset(struct usbnet *dev)
 {
+	netdev_info(dev->net, "ax88178_reset(): ENTER\n");
+
 	struct asix_data *data = (struct asix_data *)&dev->data;
 	int ret;
 	__le16 eeprom;
@@ -1211,6 +1213,8 @@ static int ax88178_reset(struct usbnet *dev)
 
 static int ax88178_link_reset(struct usbnet *dev)
 {
+	netdev_info(dev->net, "ax88178_link_reset(): ENTER\n");
+
 	u16 mode;
 	struct ethtool_cmd ecmd = { .cmd = ETHTOOL_GSET };
 	struct asix_data *data = (struct asix_data *)&dev->data;
