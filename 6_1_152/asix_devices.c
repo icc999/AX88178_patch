@@ -1164,7 +1164,7 @@ static int ax88178_reset(struct usbnet *dev)
 	asix_sw_reset(dev, AX_SWRESET_PRL | AX_SWRESET_IPPD, 0);
 	msleep(150);
 
-	
+
 	asix_write_rx_ctl(dev, 0, 0);
 
 	if (data->phymode == PHY_MODE_MARVELL) {
@@ -1216,6 +1216,13 @@ static int ax88178_link_reset(struct usbnet *dev)
 	struct asix_data *data = (struct asix_data *)&dev->data;
 	u32 speed;
 
+	/* гарантия: при каждом link_reset пробуем выставить TXDLY */
+	{
+		u32 phyid = asix_get_phyid(dev);
+		if (phyid == RTL8211F_PHYID)
+			rtl8211fsi_phy_init(dev); /* выставит bit8 на 0xd08/0x11 */
+	}
+
 	netdev_dbg(dev->net, "ax88178_link_reset()\n");
 
 	mii_check_media(&dev->mii, 1, 1);
@@ -1237,7 +1244,7 @@ static int ax88178_link_reset(struct usbnet *dev)
 	else
 		mode &= ~AX_MEDIUM_FD;
 
-	netdev_dbg(dev->net, "ax88178_link_reset() speed: %u duplex: %d setting mode to 0x%04x\n",
+	netdev_info(dev->net, "ax88178_link_reset() speed: %u duplex: %d setting mode to 0x%04x\n",
 		   speed, ecmd.duplex, mode);
 
 	asix_write_medium_mode(dev, mode, 0);
