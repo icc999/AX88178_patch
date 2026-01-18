@@ -1164,6 +1164,7 @@ static int ax88178_reset(struct usbnet *dev)
 	asix_sw_reset(dev, AX_SWRESET_PRL | AX_SWRESET_IPPD, 0);
 	msleep(150);
 
+	
 	asix_write_rx_ctl(dev, 0, 0);
 
 	if (data->phymode == PHY_MODE_MARVELL) {
