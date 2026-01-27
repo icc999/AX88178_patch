@@ -1653,8 +1653,8 @@ static struct usb_driver asix_driver = {
 
 module_usb_driver(asix_driver);
 
-MODULE_AUTHOR("David Hollis");
+MODULE_AUTHOR("Dmitry Egorushkin <EgorushkinDA@futurelabs.team>");
 MODULE_VERSION(DRIVER_VERSION);
-MODULE_DESCRIPTION("ASIX AX8817X based USB 2.0 Ethernet Devices");
+MODULE_DESCRIPTION("ASIX AX8817X based USB 2.0 Ethernet Devices with RTL8211FS support");
 MODULE_LICENSE("GPL");
 
