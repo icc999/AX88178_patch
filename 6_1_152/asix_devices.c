@@ -1243,7 +1243,7 @@ static int ax88178_reset(struct usbnet *dev)
 static int ax88178_link_reset(struct usbnet *dev)
 {
 	netdev_info(dev->net, "ax88178_link_reset(): ENTER\n");
-
+	msleep(200);
 	ax88178_log_gpios(dev, "link_reset");
 
 	u16 mode;
