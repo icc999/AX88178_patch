@@ -1098,7 +1098,7 @@ static void rtl8211fsi_phy_init(struct usbnet *dev)
 
 	}
 
-static void ax88178_log_gpio012(struct usbnet *dev, const char *tag)
+static void ax88178_log_gpios(struct usbnet *dev, const char *tag)
 {
 	u8 st = 0;
 	int ret;
@@ -1108,14 +1108,21 @@ static void ax88178_log_gpio012(struct usbnet *dev, const char *tag)
 		netdev_info(dev->net, "GPIO(%s): READ_GPIOS error %d\n", tag, ret);
 		return;
 	}
-	
+
+	/* ВАЖНО: по asix.h это биты конфигурации/значений GPIO как GPO */
 	netdev_info(dev->net,
-			"GPIO(%s): raw=0x%02x gpio0=%u gpio1=%u gpio2=%u\n",
-			tag, st,
-			!!(st & 0x01),
-			!!(st & 0x02),
-			!!(st & 0x04));
+		"GPIO(%s): raw=0x%02x | "
+		"GPO0EN=%u GPO0=%u | "
+		"GPO1EN=%u GPO1=%u | "
+		"GPO2EN=%u GPO2=%u | "
+		"RSE=%u\n",
+		tag, st,
+		!!(st & AX_GPIO_GPO0EN), !!(st & AX_GPIO_GPO_0),
+		!!(st & AX_GPIO_GPO1EN), !!(st & AX_GPIO_GPO_1),
+		!!(st & AX_GPIO_GPO2EN), !!(st & AX_GPIO_GPO_2),
+		!!(st & AX_GPIO_RSE));
 }
+	
 	
 
 static int ax88178_reset(struct usbnet *dev)
@@ -1138,7 +1145,7 @@ static int ax88178_reset(struct usbnet *dev)
 	netdev_dbg(dev->net, "GPIO Status: 0x%04x\n", status);
 */
 
-	ax88178_log_gpio012(dev, "reset_enter");
+	ax88178_log_gpios(dev, "reset_enter");
 
 	asix_write_cmd(dev, AX_CMD_WRITE_ENABLE, 0, 0, 0, NULL, 0);
 	ret = asix_read_cmd(dev, AX_CMD_READ_EEPROM, 0x0017, 0, 2, &eeprom, 0);
@@ -1177,7 +1184,7 @@ static int ax88178_reset(struct usbnet *dev)
 		asix_write_gpio(dev, AX_GPIO_GPO1EN | AX_GPIO_GPO_1, 30, 0);
 	}
 	
-	ax88178_log_gpio012(dev, "after_gpio_init");	
+	ax88178_log_gpios(dev, "after_gpio_init");	
 
 	/* Set AX88178 to enable MII/GMII/RGMII interface for external PHY */
 	asix_write_cmd(dev, AX_CMD_SW_PHY_SELECT, 0, 0, 0, NULL, 0);
@@ -1237,7 +1244,7 @@ static int ax88178_link_reset(struct usbnet *dev)
 {
 	netdev_info(dev->net, "ax88178_link_reset(): ENTER\n");
 
-	ax88178_log_gpio012(dev, "link_reset");
+	ax88178_log_gpios(dev, "link_reset");
 
 	u16 mode;
 	struct ethtool_cmd ecmd = { .cmd = ETHTOOL_GSET };
