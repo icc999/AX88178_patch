@@ -168,6 +168,7 @@ struct asix_data {
 	u8 phymode;
 	u8 ledmode;
 	u8 res;
+	u8 bmcr_fixed_gpio0;	/* 1 if PHY BMCR was set to 0x2100 (GPIO0==0), do not overwrite until next link_reset */
 };
 
 struct asix_rx_fixup_info {

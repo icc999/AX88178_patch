@@ -1095,6 +1095,14 @@ static void rtl8211fsi_phy_init(struct usbnet *dev)
 	
 	        rtl8211f_modify_paged(dev, RTL8211F_PAGE_RGMII, RTL8211F_REG_TX_DELAY,
 	                              RTL8211F_TX_DELAY_BIT, true);
+			data->bmcr_fixed_gpio0 = 0;
+			ret = asix_read_cmd(dev, AX_CMD_READ_GPIOS, 0, 0, 1, &st, 0);
+			if (ret >= 0 && !(st & AX_GPIO_GPO_0)) {
+				/* GPIO0 == 0: fix PHY to 1000M full, no autoneg; do not change BMCR until next ax88178_link_reset */
+				asix_mdio_write(dev->net, dev->mii.phy_id, MII_BMCR, 0x2100);
+				data->bmcr_fixed_gpio0 = 1;
+				netdev_info(dev->net, "RTL8211F: GPIO0=0, set PHY BMCR to 0x2100 (fixed 1000M full)\n");
+			}
 
 	}
 
@@ -1244,7 +1252,7 @@ static int ax88178_link_reset(struct usbnet *dev)
 {
 	netdev_info(dev->net, "ax88178_link_reset(): ENTER\n");
 	//msleep(200);
-	ax88178_log_gpios(dev, "link_reset_0");
+	ax88178_log_gpios(dev, "link_reset");
 
 	u16 mode;
 	struct ethtool_cmd ecmd = { .cmd = ETHTOOL_GSET };
