@@ -1244,7 +1244,7 @@ static int ax88178_link_reset(struct usbnet *dev)
 {
 	netdev_info(dev->net, "ax88178_link_reset(): ENTER\n");
 	msleep(200);
-	ax88178_log_gpios(dev, "link_reset");
+	ax88178_log_gpios(dev, "link_reset_1");
 
 	u16 mode;
 	struct ethtool_cmd ecmd = { .cmd = ETHTOOL_GSET };
