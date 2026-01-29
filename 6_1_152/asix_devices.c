@@ -1084,7 +1084,10 @@ static void rtl8211f_modify_paged(struct usbnet *dev, u16 page, u16 reg,
 	
 static void rtl8211fsi_phy_init(struct usbnet *dev)
 	{
-	        /*
+	    struct asix_data *data = (struct asix_data *)&dev->data;
+	    u8 st = 0;
+	    int ret;    
+		/*
 	         * Minimal, safe init for RTL8211F/RTL8211FSI:
 	         * Apply RGMII delays the same way realtek.c does (but without phylib).
 	         *
@@ -1140,7 +1143,7 @@ static int ax88178_reset(struct usbnet *dev)
 	struct asix_data *data = (struct asix_data *)&dev->data;
 	int ret;
 	__le16 eeprom;
-	u8 status;
+	/* u8 status; */
 	int gpio0 = 0;
 	u32 phyid;
 
